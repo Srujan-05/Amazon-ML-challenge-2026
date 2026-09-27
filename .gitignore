@@ -1,2 +1,32 @@
-/student_resource/*
 CLAUDE.md
+
+# Challenge data (~2.5 GB) stays untracked, but keep the problem statement,
+# the methodology template and the official validator — all three are needed
+# to reproduce and to assemble the submission package.
+/student_resource/*
+!/student_resource/README.md
+!/student_resource/Documentation_template.md
+!/student_resource/utils/
+/student_resource/dataset/
+
+# Generated artefacts
+/vectors/
+/artifacts/
+/output/*.tsv
+/submission/
+*.faiss
+*.npy
+*.memmap
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# OS
+.DS_Store
+/artifacts_sub/
+/student_resource/dataset_subset/
