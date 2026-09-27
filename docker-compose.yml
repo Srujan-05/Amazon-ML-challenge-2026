@@ -1,0 +1,56 @@
+# Two services, as specified in CLAUDE.md: the embedder and the pipeline.
+#
+# Local Apple Silicon note: the `embedder` service here is CUDA/vLLM. On a Mac,
+# leave it stopped and run llama-server on the host instead --
+#   llama-server --hf-repo Qwen/Qwen3-Embedding-0.6B-GGUF \
+#                --hf-file Qwen3-Embedding-0.6B-Q8_0.gguf \
+#                --embedding --pooling last -ngl 99 --port 8080
+# then point the trainer at http://host.docker.internal:8080/v1/embeddings.
+
+services:
+  embedder:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.embedder
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL: Qwen/Qwen3-Embedding-0.6B
+    volumes:
+      # Cache model weights across restarts.
+      - hf-cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 20
+      start_period: 300s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  trainer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.trainer
+    depends_on:
+      embedder:
+        condition: service_healthy
+    environment:
+      BER_EMBED_ENDPOINT: http://embedder:8080/v1/embeddings
+    volumes:
+      # Dataset in, artefacts out. Vectors are ~25 GB, so keep them on a volume.
+      - ./student_resource:/app/student_resource:ro
+      - ./vectors:/app/vectors
+      - ./artifacts:/app/artifacts
+      - ./output:/app/output
+    # Override at run time, e.g.
+    #   docker compose run trainer block --split test
+    command: ["--help"]
+
+volumes:
+  hf-cache:

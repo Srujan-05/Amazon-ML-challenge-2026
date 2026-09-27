@@ -1,0 +1,16 @@
+# Embedding service: serves an OpenAI-compatible /v1/embeddings endpoint.
+#
+# This image targets CUDA hosts and uses vLLM, which is the right choice there.
+# It is NOT how you run this locally on Apple Silicon: vLLM forces
+# VLLM_TARGET_DEVICE=cpu on macOS and runs 20-30x slower than llama.cpp's Metal
+# backend -- days rather than hours over 24.2M records. On a Mac, run
+# llama-server on the host (see README) and point the trainer at it.
+FROM vllm/vllm-openai:latest
+
+ENV MODEL=Qwen/Qwen3-Embedding-0.6B
+ENV PORT=8080
+
+EXPOSE 8080
+
+# --task embed makes the server expose /v1/embeddings rather than /v1/completions.
+ENTRYPOINT ["sh", "-c", "vllm serve $MODEL --task embed --port $PORT --host 0.0.0.0"]

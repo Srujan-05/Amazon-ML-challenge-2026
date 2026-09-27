@@ -1,0 +1,26 @@
+# Pipeline service: blocking, features, training, inference.
+FROM python:3.11-slim
+
+# libgomp is LightGBM's OpenMP runtime. Note that this image deliberately does
+# the model training one subprocess at a time (see ber/train.py): torch and
+# LightGBM each bring their own OpenMP runtime and crash if co-loaded.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential libgomp1 curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+COPY pyproject.toml README.md ./
+COPY src/ ./src/
+COPY configs/ ./configs/
+COPY scripts/ ./scripts/
+COPY tests/ ./tests/
+
+RUN uv sync --no-dev
+
+# The embedder runs as a separate service; reach it by its compose hostname.
+ENV BER_EMBED_ENDPOINT=http://embedder:8080/v1/embeddings
+
+ENTRYPOINT ["uv", "run", "ber"]
+CMD ["--help"]
